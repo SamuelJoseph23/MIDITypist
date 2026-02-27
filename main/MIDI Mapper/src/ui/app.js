@@ -402,11 +402,18 @@ function addLog(text, cat) {
     div.appendChild(msg);
 
     body.appendChild(div);
-    body.scrollTop = body.scrollHeight;
 
     // Circular buffer: cap log entries
     while (body.children.length > MAX_LOG_ENTRIES) {
         body.removeChild(body.firstChild);
+    }
+
+    // Batch scrolling to next frame to prevent synchronous layout thrashing
+    if (!window._logScrollRAF) {
+        window._logScrollRAF = requestAnimationFrame(() => {
+            body.scrollTop = body.scrollHeight;
+            window._logScrollRAF = null;
+        });
     }
 
     const countEl = document.getElementById('logCount');
@@ -786,12 +793,12 @@ function showUndoToast(message, undoCallback) {
     const undoBtn = document.createElement('button');
     undoBtn.textContent = 'Undo';
     undoBtn.style.cssText = 'background:var(--accent); color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:600; cursor:pointer;';
-    undoBtn.onclick = (e) => { 
+    undoBtn.onclick = (e) => {
         e.stopPropagation();
-        undoCallback(); 
+        undoCallback();
         clearTimeout(hideTimeout);
         toast.style.animation = 'toastOut 0.3s ease forwards';
-        setTimeout(() => toast.remove(), 300); 
+        setTimeout(() => toast.remove(), 300);
     };
 
     toast.appendChild(textSpan);
@@ -828,9 +835,13 @@ function handlePianoDecay(keys) {
 }
 
 // --- Mapping Search ---
+let _searchDebounce = null;
 function filterMappings(query) {
-    searchQuery = query;
-    updateMappings(mappings);
+    if (_searchDebounce) clearTimeout(_searchDebounce);
+    _searchDebounce = setTimeout(() => {
+        searchQuery = query;
+        updateMappings(mappings);
+    }, 150); // 150ms debounce prevents DOM thrashing while typing
 }
 
 // --- Keyboard Shortcut Capture ---
