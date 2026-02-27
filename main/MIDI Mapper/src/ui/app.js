@@ -748,10 +748,18 @@ function showToast(message, level = 'info') {
     toast.appendChild(textSpan);
     container.appendChild(toast);
 
-    setTimeout(() => {
+    toast.style.cursor = 'pointer';
+
+    const hideTimeout = setTimeout(() => {
         toast.style.animation = 'toastOut 0.3s ease forwards';
         setTimeout(() => toast.remove(), 300);
     }, 3500);
+
+    toast.onclick = () => {
+        clearTimeout(hideTimeout);
+        toast.style.animation = 'toastOut 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    };
 }
 
 function showUndoToast(message, undoCallback) {
@@ -778,16 +786,29 @@ function showUndoToast(message, undoCallback) {
     const undoBtn = document.createElement('button');
     undoBtn.textContent = 'Undo';
     undoBtn.style.cssText = 'background:var(--accent); color:#fff; border:none; border-radius:6px; padding:4px 10px; font-size:12px; font-weight:600; cursor:pointer;';
-    undoBtn.onclick = () => { undoCallback(); toast.remove(); };
+    undoBtn.onclick = (e) => { 
+        e.stopPropagation();
+        undoCallback(); 
+        clearTimeout(hideTimeout);
+        toast.style.animation = 'toastOut 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300); 
+    };
 
     toast.appendChild(textSpan);
     toast.appendChild(undoBtn);
+    toast.style.cursor = 'pointer';
     container.appendChild(toast);
 
-    setTimeout(() => {
+    const hideTimeout = setTimeout(() => {
         toast.style.animation = 'toastOut 0.3s ease forwards';
         setTimeout(() => toast.remove(), 300);
     }, 5000);
+
+    toast.onclick = () => {
+        clearTimeout(hideTimeout);
+        toast.style.animation = 'toastOut 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    };
 }
 
 // --- Sparse Piano Decay Handler ---
