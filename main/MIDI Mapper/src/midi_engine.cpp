@@ -82,7 +82,8 @@ void ProcessChord(const std::vector<int>& chord) {
 
     // 1. Try to find a specific chord mapping
     if (sortedChord.size() > 1) {
-        for (const auto& m : g_mappings) {
+        for (size_t i = 0; i < g_mappings.size(); ++i) {
+            const auto& m = g_mappings[i];
             if (m.midi_type != 2) continue;
 
             // Context Stack Filtering
@@ -102,6 +103,7 @@ void ProcessChord(const std::vector<int>& chord) {
 
             if (targetChord == sortedChord) {
                 SimulateKeyCombo(m.key_vk, m.modifiers);
+                PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
                 SendLog("Match found! Triggering VK " + std::to_string(m.key_vk));
                 found = true;
                 break;
@@ -215,7 +217,8 @@ void ProcessMIDIEvent(int type, int number, int velocity) {
     std::string cachedApp = WideToUtf8(g_currentApp);
 
     std::lock_guard<std::recursive_mutex> lock(g_mappingsMutex);
-    for (const auto& m : g_mappings) {
+    for (size_t i = 0; i < g_mappings.size(); ++i) {
+        const auto& m = g_mappings[i];
         if (!m.enabled) continue; // Skip disabled mappings
 
         // Context filtering (using pre-computed strings)
@@ -231,6 +234,7 @@ void ProcessMIDIEvent(int type, int number, int velocity) {
             if (m.midi_type == 0 && isNoteOn && number == m.midi_num) {
                 if (m.profile_switch < (int)g_profileSlots.size()) {
                     PostMessage(g_hwndMain, WM_USER + 100, m.profile_switch, 0);
+                    PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
                 }
             }
             continue;
@@ -246,6 +250,7 @@ void ProcessMIDIEvent(int type, int number, int velocity) {
                     if (m.vel_zone == 2 && velocity < 64) continue;
                 }
                 SendKeyInput(m.key_vk, true, m.modifiers);
+                PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
                 if (g_verboseLogging) SendLog("Note " + std::to_string(number) + " -> Key Down: " + std::to_string(m.key_vk), "mapping");
             }
             else if (isNoteOff) {
@@ -266,19 +271,21 @@ void ProcessMIDIEvent(int type, int number, int velocity) {
             case 0: // Keypress (Now Momentary by default for games)
                 if (ccCrossedUp) {
                     SendKeyInput(m.key_vk, true, m.modifiers);
+                    PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
                     if (g_verboseLogging) SendLog("CC " + std::to_string(number) + " -> Key Down: " + std::to_string(m.key_vk), "mapping");
                 } else if (ccCrossedDown) {
                     SendKeyInput(m.key_vk, false, m.modifiers);
                     if (g_verboseLogging) SendLog("CC " + std::to_string(number) + " -> Key Up: " + std::to_string(m.key_vk), "mapping");
                 }
                 break;
-            case 1: SimulateMouseMove((velocity - 64) * 2, 0); break;
-            case 2: SimulateMouseMove(0, (velocity - 64) * 2); break;
-            case 3: SimulateScroll((velocity - 64) * 20); break;
+            case 1: SimulateMouseMove((velocity - 64) * 2, 0); PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} }); break;
+            case 2: SimulateMouseMove(0, (velocity - 64) * 2); PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} }); break;
+            case 3: SimulateScroll((velocity - 64) * 20); PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} }); break;
             case 4: // Hold Key (Dedicated toggle behavior or held state)
                 if (ccCrossedUp && !g_ccHoldActive[m.midi_num]) {
                     SendKeyInput(m.key_vk, true);
                     g_ccHoldActive[m.midi_num] = true;
+                    PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
                 }
                 else if (ccCrossedDown && g_ccHoldActive[m.midi_num]) {
                     SendKeyInput(m.key_vk, false);
@@ -291,13 +298,18 @@ void ProcessMIDIEvent(int type, int number, int velocity) {
         // Macros, AI, HUD
         if (m.midi_type == 4 && isNoteOn && number == m.midi_num && m.gesture_id == 0) {
             SimulateText(m.macro_text);
+            PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
         }
         if (m.midi_type == 5 && isNoteOn && number == m.midi_num && m.gesture_id == 0) {
             PostToWebView({ {"type", "run_ai"}, {"prompt", m.ai_prompt} });
+            PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
             SendLog("AI Prompt sent: " + m.ai_prompt);
         }
         if (m.midi_type == 3 && number == m.midi_num) {
-            if (isNoteOn) PostToWebView({ {"type", "hud"}, {"active", true}, {"title", WideToUtf8(GetModifierString(m.modifiers) + GetKeyName(m.key_vk))} });
+            if (isNoteOn) {
+                PostToWebView({ {"type", "hud"}, {"active", true}, {"title", WideToUtf8(GetModifierString(m.modifiers) + GetKeyName(m.key_vk))} });
+                PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
+            }
             else if (isNoteOff) PostToWebView({ {"type", "hud"}, {"active", false} });
         }
     }
@@ -307,7 +319,8 @@ void ResolveGesture(int midi_num, int gesture_id) {
     std::string cachedTitle = WideToUtf8(g_currentWindowTitle);
     std::string cachedApp = WideToUtf8(g_currentApp);
     std::lock_guard<std::recursive_mutex> lock(g_mappingsMutex);
-    for (const auto& m : g_mappings) {
+    for (size_t i = 0; i < g_mappings.size(); ++i) {
+        const auto& m = g_mappings[i];
         if (!m.enabled) continue;
         if (m.midi_num != midi_num) continue;
         
@@ -323,9 +336,18 @@ void ResolveGesture(int midi_num, int gesture_id) {
         }
 
         // Execute (Simplified trigger for gesture demo)
-        if (m.midi_type == 0) SimulateKeyCombo(m.key_vk, m.modifiers);
-        else if (m.midi_type == 4) SimulateText(m.macro_text);
-        else if (m.midi_type == 5) PostToWebView({ {"type", "run_ai"}, {"prompt", m.ai_prompt} });
+        if (m.midi_type == 0) {
+            SimulateKeyCombo(m.key_vk, m.modifiers);
+            PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
+        }
+        else if (m.midi_type == 4) {
+            SimulateText(m.macro_text);
+            PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
+        }
+        else if (m.midi_type == 5) {
+            PostToWebView({ {"type", "run_ai"}, {"prompt", m.ai_prompt} });
+            PostToWebView({ {"type", "mapping_triggered"}, {"index", (int)i} });
+        }
     }
 }
 
