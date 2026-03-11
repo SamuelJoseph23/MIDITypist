@@ -100,7 +100,7 @@
         <img src="app_icon.ico" style="width:32px; height:32px; object-fit:contain;">
       </div>
       <h1
-        style="font-size:16px; font-weight:700; color:var(--text-primary); letter-spacing:-0.2px; margin: 0; background:var(--accent-gradient); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+        style="font-size:16px; font-weight:800; color:var(--text-primary); letter-spacing:0.02em; margin: 0; background:var(--accent-gradient); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
         MIDITypist</h1>
     </div>
 
@@ -517,6 +517,35 @@
             <p style="font-size:11px; color:var(--text-tertiary); margin-top:8px;">Use {prompt} to inject dynamic AI
               triggers.</p>
           </div>
+        </div>
+      </div>
+
+      <div class="settings-card" style="grid-column: 1 / -1;">
+        <h3>Workspaces</h3>
+        <div style="font-size:12px; color:var(--text-tertiary); margin-bottom:12px;">
+          Automatically switch mapping profiles when you focus a specific application.
+        </div>
+        <div id="workspaceList" style="margin-bottom:12px;"></div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input id="workspaceAppInput" type="text" placeholder="e.g. chrome.exe"
+            style="flex:1; padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:8px; color:var(--text-primary); font-size:13px;">
+          <button class="btn btn-primary" onclick="addWorkspaceBinding()" style="white-space:nowrap; padding:8px 16px;">Add Workspace</button>
+        </div>
+      </div>
+
+      <div class="settings-card" style="grid-column: 1 / -1;">
+        <h3>Macro Syntax Reference</h3>
+        <div style="font-size:12px; color:var(--text-tertiary); margin-bottom:8px;">
+          Macros support special tokens for advanced automation sequences.
+        </div>
+        <div style="font-size:12px; color:var(--text-secondary); font-family:var(--font-mono); background:rgba(255,255,255,0.03); padding:12px; border-radius:8px; line-height:1.8;">
+          <code>{delay:500}</code> — Pause for 500ms<br>
+          <code>{enter}</code> — Press Enter key<br>
+          <code>{tab}</code> — Press Tab key<br>
+          <code>{esc}</code> — Press Escape key<br>
+          <code>{space}</code> — Press Space key<br>
+          <code>{backspace}</code> — Press Backspace key<br>
+          <span style="color:var(--text-tertiary); font-style:italic;">Example: <code>Hello{delay:1000}World{enter}</code></span>
         </div>
       </div>
     </div>

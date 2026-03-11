@@ -290,7 +290,19 @@ void ProcessMIDIEvent(int type, int number, int velocity) {
         
         // Macros, AI, HUD
         if (m.midi_type == 4 && isNoteOn && number == m.midi_num && m.gesture_id == 0) {
-            SimulateText(m.macro_text);
+            // Feature 9: Route macros with delay tokens through JS engine
+            if (m.macro_text.find("{delay:") != std::string::npos ||
+                m.macro_text.find("{enter}") != std::string::npos ||
+                m.macro_text.find("{tab}") != std::string::npos ||
+                m.macro_text.find("{esc}") != std::string::npos ||
+                m.macro_text.find("{space}") != std::string::npos ||
+                m.macro_text.find("{backspace}") != std::string::npos) {
+                PostToWebView({ {"type", "execute_macro"}, {"text", m.macro_text} });
+            } else {
+                SimulateText(m.macro_text);
+            }
+            // Feature 4: HUD notification
+            PostToWebView({ {"type", "hud_notify"}, {"text", "Macro Executed"}, {"level", "success"} });
         }
         if (m.midi_type == 5 && isNoteOn && number == m.midi_num && m.gesture_id == 0) {
             PostToWebView({ {"type", "run_ai"}, {"prompt", m.ai_prompt} });
@@ -323,8 +335,21 @@ void ResolveGesture(int midi_num, int gesture_id) {
         }
 
         // Execute (Simplified trigger for gesture demo)
-        if (m.midi_type == 0) SimulateKeyCombo(m.key_vk, m.modifiers);
-        else if (m.midi_type == 4) SimulateText(m.macro_text);
+        if (m.midi_type == 0) {
+            SimulateKeyCombo(m.key_vk, m.modifiers);
+            PostToWebView({ {"type", "hud_notify"}, {"text", "Gesture -> Key"}, {"level", "success"} });
+        }
+        else if (m.midi_type == 4) {
+            // Feature 9: Route macros with delay tokens through JS engine
+            if (m.macro_text.find("{delay:") != std::string::npos ||
+                m.macro_text.find("{enter}") != std::string::npos ||
+                m.macro_text.find("{tab}") != std::string::npos) {
+                PostToWebView({ {"type", "execute_macro"}, {"text", m.macro_text} });
+            } else {
+                SimulateText(m.macro_text);
+            }
+            PostToWebView({ {"type", "hud_notify"}, {"text", "Macro Executed"}, {"level", "success"} });
+        }
         else if (m.midi_type == 5) PostToWebView({ {"type", "run_ai"}, {"prompt", m.ai_prompt} });
     }
 }

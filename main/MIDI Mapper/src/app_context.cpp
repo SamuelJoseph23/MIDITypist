@@ -53,6 +53,7 @@ void CALLBACK WinEventProc(HWINEVENTHOOK hWinEventHook, DWORD event, HWND hwnd,
                     if (g_appProfileBindings.count(g_currentApp)) {
                         LoadMappings(g_appProfileBindings[g_currentApp]);
                         SendLog("Auto-switched profile for: " + WideToUtf8(g_currentApp));
+                        PostToWebView({ {"type", "toast"}, {"text", "Workspace: " + WideToUtf8(g_currentApp)}, {"level", "info"} });
                     }
                 }
             }

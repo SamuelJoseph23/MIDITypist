@@ -64,6 +64,9 @@ if (window.chrome?.webview) {
             case 'config': syncConfig(msg.config); break;
             case 'toast': showToast(msg.text, msg.level || 'info'); break;
             case 'piano_decay': handlePianoDecay(msg.keys); break;
+            case 'execute_macro': executeMacroWithDelays(msg.text); break;
+            case 'workspace_bindings': updateWorkspaceBindings(msg.bindings); break;
+            case 'hud_notify': showHudNotify(msg.text, msg.level); break;
         }
     });
 }
@@ -159,12 +162,12 @@ function updateMappings(list) {
         card.className = 'mapping-card';
         if (m.enabled === false) card.style.opacity = '0.4';
 
-        // Color-coded left border by mapping type
-        const typeColors = { 0: 'var(--system-blue)', 1: 'var(--system-green)', 2: 'var(--system-purple)', 3: 'var(--system-orange)', 4: 'var(--system-orange)', 5: '#FF375F' };
-        card.style.borderLeftColor = typeColors[m.midi_type] || 'var(--accent)';
+        // Color-coded left border by mapping type (Precision-Industrial palette)
+        const typeColors = { 0: '#F59E0B', 1: '#22D3EE', 2: '#A78BFA', 3: '#FB923C', 4: '#34D058', 5: '#F472B6' };
+        card.style.setProperty('--card-type-color', typeColors[m.midi_type] || 'var(--accent)');
 
-        // Stagger animation
-        card.style.animationDelay = `${i * 30}ms`;
+        // Stagger animation via CSS custom property
+        card.style.setProperty('--i', i);
 
         card.onclick = () => openEditor(i);
 
@@ -701,9 +704,128 @@ async function handleAiRequest(prompt) {
         if (err.name === 'AbortError') {
             addLog("AI Failed: Request timed out (15s)", "error");
         } else {
-            addLog("AI Failed: " + err.message, "error");
+            addLog('AI Error: ' + err.message, 'error');
+            showToast('AI Error: ' + err.message, 'error');
         }
     }
+}
+
+// --- Stateful Macro Engine (Feature 9) ---
+// Parses macro text containing {delay:NNN}, {enter}, {tab}, {esc} tokens
+// and executes them sequentially with async delays.
+async function executeMacroWithDelays(text) {
+    if (!text) return;
+    // Token regex: matches {delay:NNN}, {enter}, {tab}, {esc}, {space}, {backspace}
+    const tokenRegex = /\{(delay:\d+|enter|tab|esc|space|backspace)\}/gi;
+    const segments = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = tokenRegex.exec(text)) !== null) {
+        // Push the text before this token
+        if (match.index > lastIndex) {
+            segments.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+        }
+        const token = match[1].toLowerCase();
+        if (token.startsWith('delay:')) {
+            segments.push({ type: 'delay', value: parseInt(token.split(':')[1], 10) });
+        } else {
+            // Map token names to VK codes
+            const keyMap = { enter: 13, tab: 9, esc: 27, space: 32, backspace: 8 };
+            segments.push({ type: 'key', value: keyMap[token] || 0 });
+        }
+        lastIndex = match.index + match[0].length;
+    }
+    // Push any remaining text after the last token
+    if (lastIndex < text.length) {
+        segments.push({ type: 'text', value: text.slice(lastIndex) });
+    }
+
+    addLog(`Macro Engine: Executing ${segments.length} segment(s)`, 'system');
+
+    for (const seg of segments) {
+        if (seg.type === 'text') {
+            send('simulate_text', { text: seg.value });
+        } else if (seg.type === 'delay') {
+            await new Promise(resolve => setTimeout(resolve, seg.value));
+        } else if (seg.type === 'key') {
+            send('execute_delayed_key', { vk: seg.value, modifiers: 0 });
+        }
+    }
+}
+
+// --- Workspace Bindings (Feature 2) ---
+let workspaceBindings = {};
+
+function updateWorkspaceBindings(bindings) {
+    workspaceBindings = bindings || {};
+    renderWorkspaceBindings();
+}
+
+function renderWorkspaceBindings() {
+    const container = document.getElementById('workspaceList');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const entries = Object.entries(workspaceBindings);
+    if (entries.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-tertiary); font-size:13px; padding:8px 0;">No workspace bindings configured. Add one below.</div>';
+        return;
+    }
+
+    for (const [app, profile] of entries) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:rgba(255,255,255,0.03); border-radius:8px; margin-bottom:6px;';
+
+        const info = document.createElement('div');
+        info.style.cssText = 'display:flex; flex-direction:column; gap:2px; min-width:0; flex:1;';
+        const appName = document.createElement('span');
+        appName.style.cssText = 'font-size:13px; font-weight:600; color:var(--accent);';
+        appName.textContent = app;
+        appName.title = app;
+        const profileName = document.createElement('span');
+        profileName.style.cssText = 'font-size:11px; color:var(--text-tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+        // Show only filename from path
+        const profileBasename = profile.split(/[\\/]/).pop() || profile;
+        profileName.textContent = profileBasename;
+        profileName.title = profile;
+        info.appendChild(appName);
+        info.appendChild(profileName);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn';
+        delBtn.style.cssText = 'padding:4px 8px; color:var(--error); opacity:0.6; font-size:11px; flex-shrink:0;';
+        delBtn.textContent = 'Remove';
+        delBtn.onmouseenter = () => delBtn.style.opacity = '1';
+        delBtn.onmouseleave = () => delBtn.style.opacity = '0.6';
+        delBtn.onclick = () => {
+            send('remove_workspace_binding', { app });
+            showToast(`Removed workspace for ${app}`, 'info');
+        };
+
+        row.appendChild(info);
+        row.appendChild(delBtn);
+        container.appendChild(row);
+    }
+}
+
+function addWorkspaceBinding() {
+    const appInput = document.getElementById('workspaceAppInput');
+    const app = appInput ? appInput.value.trim() : '';
+    if (!app) {
+        showToast('Enter an application name (e.g., chrome.exe)', 'warning');
+        return;
+    }
+    // Tell C++ to open a file dialog and bind this app
+    send('set_workspace_binding', { app });
+    if (appInput) appInput.value = '';
+}
+
+// --- HUD Notification Handler (Feature 4) ---
+function showHudNotify(text, level) {
+    // This is handled by the separate HUD overlay window.
+    // If the HUD overlay is not available, show as a toast instead.
+    showToast(text, level || 'info');
 }
 
 // --- macOS Style Settings Modal ---

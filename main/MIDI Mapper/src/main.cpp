@@ -95,6 +95,11 @@ ULONGLONG g_lastUiPushTime = 0;
 const ULONGLONG UI_THROTTLE_MS = 16; // ~60fps
 const std::string APP_VERSION = "1.1";
 
+// ── HUD Overlay (Feature 4) ──
+HWND g_hwndHud = NULL;
+wil::com_ptr<ICoreWebView2> g_hudWebview;
+wil::com_ptr<ICoreWebView2Controller> g_hudController;
+
 // ── Forward Declaration ──
 LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam);
 
@@ -136,6 +141,13 @@ void HandleWebMessage(const std::string& messageStr) {
         // Auto-load last profile
         if (!g_lastProfilePath.empty()) {
             LoadMappings(g_lastProfilePath);
+        }
+        // Send workspace bindings to UI (Feature 2)
+        {
+            json bindings = json::object();
+            for (auto& [exe, profile] : g_appProfileBindings)
+                bindings[WideToUtf8(exe)] = WideToUtf8(profile);
+            PostToWebView({ {"type", "workspace_bindings"}, {"bindings", bindings} });
         }
     }
     else if (action == "toggle_connect") {
@@ -328,6 +340,55 @@ void HandleWebMessage(const std::string& messageStr) {
     }
     else if (action == "close_window") {
         PostMessage(g_hwndMain, WM_CLOSE, 0, 0);
+    }
+    // Feature 9: Execute a single delayed keypress from JS macro engine
+    else if (action == "execute_delayed_key") {
+        int vk = msg.value("vk", 0);
+        int mods = msg.value("modifiers", 0);
+        if (vk > 0) SimulateKeyCombo(vk, mods);
+    }
+    // Feature 2: Workspace Bindings
+    else if (action == "set_workspace_binding") {
+        std::string app = msg.value("app", "");
+        if (!app.empty()) {
+            // Open file dialog for profile selection
+            wchar_t filepath[MAX_PATH] = { 0 };
+            OPENFILENAMEW ofn = {};
+            ofn.lStructSize = sizeof(ofn);
+            ofn.hwndOwner = g_hwndMain;
+            ofn.lpstrFilter = L"JSON Files\0*.json\0All Files\0*.*\0";
+            ofn.lpstrFile = filepath;
+            ofn.nMaxFile = MAX_PATH;
+            ofn.Flags = OFN_FILEMUSTEXIST;
+            if (GetOpenFileName(&ofn)) {
+                g_appProfileBindings[Utf8ToWide(app)] = filepath;
+                SaveConfig();
+                SendLog("Workspace bound: " + app + " -> " + WideToUtf8(std::wstring(filepath)));
+                // Refresh UI
+                json bindings = json::object();
+                for (auto& [exe, profile] : g_appProfileBindings)
+                    bindings[WideToUtf8(exe)] = WideToUtf8(profile);
+                PostToWebView({ {"type", "workspace_bindings"}, {"bindings", bindings} });
+            }
+        }
+    }
+    else if (action == "remove_workspace_binding") {
+        std::string app = msg.value("app", "");
+        if (!app.empty()) {
+            g_appProfileBindings.erase(Utf8ToWide(app));
+            SaveConfig();
+            SendLog("Workspace removed: " + app);
+            json bindings = json::object();
+            for (auto& [exe, profile] : g_appProfileBindings)
+                bindings[WideToUtf8(exe)] = WideToUtf8(profile);
+            PostToWebView({ {"type", "workspace_bindings"}, {"bindings", bindings} });
+        }
+    }
+    else if (action == "get_workspace_bindings") {
+        json bindings = json::object();
+        for (auto& [exe, profile] : g_appProfileBindings)
+            bindings[WideToUtf8(exe)] = WideToUtf8(profile);
+        PostToWebView({ {"type", "workspace_bindings"}, {"bindings", bindings} });
     }
 }
 
@@ -651,6 +712,117 @@ void InitWebView2(HWND hwnd) {
 
                             // Navigate
                             g_webview->Navigate(L"https://app.miditypist/index.html");
+
+                            return S_OK;
+                        }).Get());
+                return S_OK;
+            }).Get());
+}
+
+// ══════════════════════════════════════════
+//  HUD Overlay (Feature 4)
+// ══════════════════════════════════════════
+
+void PostToHud(const json& msg) {
+    if (!g_hudWebview) return;
+    std::wstring jsonStr = Utf8ToWide(msg.dump());
+    g_hudWebview->PostWebMessageAsJson(jsonStr.c_str());
+}
+
+void InitHudOverlay(HWND parent) {
+    // Get primary monitor dimensions
+    int screenW = GetSystemMetrics(SM_CXSCREEN);
+    int screenH = GetSystemMetrics(SM_CYSCREEN);
+    int hudW = 400, hudH = 80;
+    int hudX = (screenW - hudW) / 2;
+    int hudY = screenH - hudH - 48;
+
+    // Register a separate window class for the HUD
+    WNDCLASSEX wcHud = { sizeof(WNDCLASSEX) };
+    wcHud.lpfnWndProc = DefWindowProc;
+    wcHud.hInstance = g_hInst;
+    wcHud.lpszClassName = L"MIDITypistHUD";
+    RegisterClassEx(&wcHud);
+
+    // Create a layered, transparent, click-through, always-on-top popup
+    g_hwndHud = CreateWindowEx(
+        WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW,
+        L"MIDITypistHUD", L"HUD",
+        WS_POPUP,
+        hudX, hudY, hudW, hudH,
+        nullptr, nullptr, g_hInst, nullptr);
+
+    if (!g_hwndHud) return;
+
+    // Make window fully transparent via layered alpha
+    SetLayeredWindowAttributes(g_hwndHud, 0, 255, LWA_ALPHA);
+    ShowWindow(g_hwndHud, SW_SHOWNOACTIVATE);
+
+    // Find UI directory (same logic as main WebView)
+    wchar_t exePath[MAX_PATH];
+    GetModuleFileNameW(NULL, exePath, MAX_PATH);
+    std::wstring exeDir(exePath);
+    exeDir = exeDir.substr(0, exeDir.find_last_of(L"\\") + 1);
+
+    std::wstring uiPath;
+    std::vector<std::wstring> potentialPaths = {
+        exeDir + L"ui",
+        exeDir + L"..\\..\\MIDI Mapper\\src\\ui",
+        exeDir + L"..\\src\\ui",
+        exeDir
+    };
+    for (auto& p : potentialPaths) {
+        DWORD attr = GetFileAttributesW(p.c_str());
+        if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+            uiPath = p;
+            break;
+        }
+    }
+    if (uiPath.empty()) uiPath = exeDir;
+
+    CreateCoreWebView2EnvironmentWithOptions(nullptr, nullptr, nullptr,
+        Callback<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>(
+            [uiPath](HRESULT result, ICoreWebView2Environment* env) -> HRESULT {
+                if (FAILED(result)) return result;
+                env->CreateCoreWebView2Controller(g_hwndHud,
+                    Callback<ICoreWebView2CreateCoreWebView2ControllerCompletedHandler>(
+                        [uiPath](HRESULT result, ICoreWebView2Controller* controller) -> HRESULT {
+                            if (FAILED(result)) return result;
+                            g_hudController = controller;
+                            g_hudController->get_CoreWebView2(&g_hudWebview);
+
+                            // Settings
+                            wil::com_ptr<ICoreWebView2Settings> settings;
+                            g_hudWebview->get_Settings(&settings);
+                            settings->put_IsScriptEnabled(TRUE);
+                            settings->put_IsWebMessageEnabled(TRUE);
+                            settings->put_AreDevToolsEnabled(FALSE);
+                            settings->put_AreDefaultContextMenusEnabled(FALSE);
+
+                            // Virtual host mapping
+                            wil::com_ptr<ICoreWebView2_3> webView3;
+                            g_hudWebview.query_to(&webView3);
+                            if (webView3) {
+                                webView3->SetVirtualHostNameToFolderMapping(
+                                    L"hud.miditypist", uiPath.c_str(),
+                                    COREWEBVIEW2_HOST_RESOURCE_ACCESS_KIND_ALLOW);
+                            }
+
+                            // Transparent background
+                            wil::com_ptr<ICoreWebView2Controller2> controller2;
+                            g_hudController.query_to(&controller2);
+                            if (controller2) {
+                                COREWEBVIEW2_COLOR transparent = { 0, 0, 0, 0 };
+                                controller2->put_DefaultBackgroundColor(transparent);
+                            }
+
+                            // Size to HUD window
+                            RECT bounds;
+                            GetClientRect(g_hwndHud, &bounds);
+                            g_hudController->put_Bounds(bounds);
+
+                            // Navigate to HUD page
+                            g_hudWebview->Navigate(L"https://hud.miditypist/hud.html");
 
                             return S_OK;
                         }).Get());

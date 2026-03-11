@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow: hidden;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            width: 100vw;
+            height: 100vh;
+            padding-bottom: 24px;
+        }
+
+        #hud {
+            opacity: 0;
+            transform: translateY(12px) scale(0.96);
+            transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            background: rgba(15, 15, 17, 0.88);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 12px 24px;
+            color: #e0e0e0;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: -0.2px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 380px;
+            pointer-events: none;
+        }
+
+        #hud.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        #hud-icon {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #34C759;
+            font-size: 16px;
+        }
+
+        #hud-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="hud">
+        <div id="hud-icon"></div>
+        <span id="hud-text"></span>
+    </div>
+    <script>
+        const hud = document.getElementById('hud');
+        const hudIcon = document.getElementById('hud-icon');
+        const hudText = document.getElementById('hud-text');
+        let hideTimeout = null;
+
+        const icons = { success: '\u2713', error: '\u2717', warning: '\u26A0', info: '\u2139' };
+        const colors = { success: '#34C759', error: '#FF3B30', warning: '#FF9500', info: '#007AFF' };
+
+        function showNotification(text, level = 'info') {
+            if (hideTimeout) clearTimeout(hideTimeout);
+            hudIcon.textContent = icons[level] || icons.info;
+            hudIcon.style.color = colors[level] || colors.info;
+            hudText.textContent = text;
+            hud.classList.add('visible');
+            hideTimeout = setTimeout(() => {
+                hud.classList.remove('visible');
+            }, 2000);
+        }
+
+        if (window.chrome?.webview) {
+            window.chrome.webview.addEventListener('message', e => {
+                const msg = e.data;
+                if (msg.type === 'hud_show') {
+                    showNotification(msg.text, msg.level || 'info');
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

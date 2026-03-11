@@ -187,3 +187,8 @@ extern std::mutex g_gestureNotesMutex;
 extern ULONGLONG g_lastUiPushTime;
 extern const ULONGLONG UI_THROTTLE_MS;
 extern const std::string APP_VERSION;
+
+// ── HUD Overlay (Feature 4) ──
+extern HWND g_hwndHud;
+extern wil::com_ptr<ICoreWebView2> g_hudWebview;
+extern wil::com_ptr<ICoreWebView2Controller> g_hudController;
