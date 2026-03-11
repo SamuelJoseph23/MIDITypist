@@ -1,8 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* --- Precision-Industrial Design Tokens --- */
-  --system-blue: #007AFF;
+  /* --- Clean Modern Design Tokens --- */
+  --system-blue: #3B82F6;
   --system-red: #FF5F57;
   --system-yellow: #FEBC2E;
   --system-green: #34D058;
@@ -21,21 +21,21 @@
   --text-secondary: rgba(255, 255, 255, 0.58);
   --text-tertiary: rgba(255, 255, 255, 0.32);
 
-  --accent: #F59E0B;
-  --accent-glow: rgba(245, 158, 11, 0.35);
-  --accent-soft: rgba(245, 158, 11, 0.12);
-  --accent-surface: rgba(245, 158, 11, 0.06);
-  --accent-gradient: linear-gradient(135deg, #F59E0B 0%, #EF4444 100%);
+  --accent: #3B82F6;
+  --accent-glow: rgba(59, 130, 246, 0.35);
+  --accent-soft: rgba(59, 130, 246, 0.12);
+  --accent-surface: rgba(59, 130, 246, 0.06);
+  --accent-gradient: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
 
   --error: #EF4444;
 
-  --border: rgba(255, 200, 80, 0.06);
-  --border-highlight: rgba(255, 200, 80, 0.14);
+  --border: rgba(255, 255, 255, 0.07);
+  --border-highlight: rgba(255, 255, 255, 0.14);
 
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.65);
-  --shadow-glow: 0 0 20px rgba(245, 158, 11, 0.1);
+  --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.1);
 
   --radius-xl: 14px;
   --radius-lg: 10px;
@@ -44,32 +44,32 @@
 
   --glass-blur: 40px;
   --transition: 0.22s cubic-bezier(0.2, 0, 0, 1);
-  --font-main: 'Syne', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-main: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
 }
 
 [data-theme="light"] {
-  --bg-main: #FAF9F7;
-  --bg-sidebar: rgba(242, 240, 236, 0.9);
+  --bg-main: #F7F8FA;
+  --bg-sidebar: rgba(240, 242, 245, 0.9);
   --bg-elevated: #FFFFFF;
-  --bg-surface: #F0EDE8;
+  --bg-surface: #EDF0F4;
   --bg-card: rgba(0, 0, 0, 0.025);
   --bg-card-hover: rgba(0, 0, 0, 0.05);
   --bg-input: rgba(0, 0, 0, 0.035);
-  --text-primary: #1A1918;
-  --text-secondary: #4A4842;
-  --text-tertiary: #8C8880;
-  --accent: #D97706;
-  --accent-glow: rgba(217, 119, 6, 0.25);
-  --accent-soft: rgba(217, 119, 6, 0.1);
-  --accent-surface: rgba(217, 119, 6, 0.05);
-  --accent-gradient: linear-gradient(135deg, #D97706 0%, #DC2626 100%);
+  --text-primary: #1A1D23;
+  --text-secondary: #4A4F5C;
+  --text-tertiary: #8890A0;
+  --accent: #2563EB;
+  --accent-glow: rgba(37, 99, 235, 0.25);
+  --accent-soft: rgba(37, 99, 235, 0.1);
+  --accent-surface: rgba(37, 99, 235, 0.05);
+  --accent-gradient: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
   --border: rgba(0, 0, 0, 0.07);
   --border-highlight: rgba(0, 0, 0, 0.13);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08);
   --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.12);
-  --shadow-glow: 0 0 16px rgba(217, 119, 6, 0.08);
+  --shadow-glow: 0 0 16px rgba(37, 99, 235, 0.08);
 }
 
 /* --- Core Layout --- */
@@ -248,7 +248,7 @@ body {
   background: var(--bg-surface);
   border-color: var(--border-highlight);
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md), 0 0 16px rgba(245, 158, 11, 0.05);
+  box-shadow: var(--shadow-md), 0 0 16px rgba(59, 130, 246, 0.05);
 }
 
 .badge {
@@ -302,13 +302,13 @@ body {
   background: var(--accent-gradient);
   color: #FFF;
   border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: var(--shadow-sm), 0 0 16px rgba(245, 158, 11, 0.18);
+  box-shadow: var(--shadow-sm), 0 0 16px rgba(59, 130, 246, 0.18);
   letter-spacing: 0.03em;
   font-weight: 600;
 }
 
 .btn-primary:hover {
-  box-shadow: var(--shadow-md), 0 0 28px rgba(245, 158, 11, 0.28);
+  box-shadow: var(--shadow-md), 0 0 28px rgba(59, 130, 246, 0.28);
 }
 
 .btn-secondary {
@@ -424,7 +424,7 @@ header {
   background: rgba(16, 16, 18, 0.88);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(59, 130, 246, 0.08);
   border-radius: 22px;
   padding: 7px 16px;
   display: flex;
@@ -437,7 +437,7 @@ header {
 .hud-island:hover {
   transform: scale(1.012);
   background: rgba(20, 20, 22, 0.92);
-  border-color: rgba(245, 158, 11, 0.14);
+  border-color: rgba(59, 130, 246, 0.14);
 }
 
 /* --- Dynamic Island Animations --- */
@@ -805,15 +805,15 @@ input:checked+.toggle-slider::after {
 
 @keyframes pulse-success-border {
   0% {
-    border-color: rgba(245, 158, 11, 0.4);
+    border-color: rgba(59, 130, 246, 0.4);
   }
 
   70% {
-    border-color: rgba(245, 158, 11, 0);
+    border-color: rgba(59, 130, 246, 0);
   }
 
   100% {
-    border-color: rgba(245, 158, 11, 0);
+    border-color: rgba(59, 130, 246, 0);
   }
 }
 

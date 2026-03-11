@@ -163,7 +163,7 @@ function updateMappings(list) {
         if (m.enabled === false) card.style.opacity = '0.4';
 
         // Color-coded left border by mapping type (Precision-Industrial palette)
-        const typeColors = { 0: '#F59E0B', 1: '#22D3EE', 2: '#A78BFA', 3: '#FB923C', 4: '#34D058', 5: '#F472B6' };
+        const typeColors = { 0: '#3B82F6', 1: '#22D3EE', 2: '#A78BFA', 3: '#FB923C', 4: '#34D058', 5: '#F472B6' };
         card.style.setProperty('--card-type-color', typeColors[m.midi_type] || 'var(--accent)');
 
         // Stagger animation via CSS custom property
