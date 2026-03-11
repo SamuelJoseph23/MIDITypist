@@ -251,6 +251,17 @@ body {
   box-shadow: var(--shadow-md), 0 0 16px rgba(59, 130, 246, 0.05);
 }
 
+.mapping-card.flash-trigger {
+  animation: mappingTriggerFlash 0.3s ease-out;
+  border-color: var(--system-green) !important;
+}
+
+@keyframes mappingTriggerFlash {
+  0% { transform: scale(1); box-shadow: 0 0 0px rgba(40, 200, 64, 0); }
+  10% { transform: scale(1.02); box-shadow: 0 0 15px rgba(40, 200, 64, 0.6); border-color: var(--system-green); }
+  100% { transform: scale(1); box-shadow: 0 0 0px rgba(40, 200, 64, 0); }
+}
+
 .badge {
   font-size: 10px;
   font-weight: 700;

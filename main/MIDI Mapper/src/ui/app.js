@@ -61,6 +61,7 @@ if (window.chrome?.webview) {
             case 'log': addLog(msg.text, msg.category); break;
             case 'run_ai': handleAiRequest(msg.prompt); break;
             case 'ports': updatePorts(msg.ports, msg.selected); break;
+            case 'mapping_triggered': flashMappingCard(msg.index); break;
             case 'config': syncConfig(msg.config); break;
             case 'toast': showToast(msg.text, msg.level || 'info'); break;
             case 'piano_decay': handlePianoDecay(msg.keys); break;
@@ -69,6 +70,19 @@ if (window.chrome?.webview) {
             case 'hud_notify': showHudNotify(msg.text, msg.level); break;
         }
     });
+}
+
+function flashMappingCard(index) {
+    const card = document.getElementById(`mapping-card-${index}`);
+    if (card) {
+        // Reset animation by removing and re-adding class
+        card.classList.remove('flash-trigger');
+        void card.offsetWidth; // trigger reflow
+        card.classList.add('flash-trigger');
+        setTimeout(() => {
+            card.classList.remove('flash-trigger');
+        }, 300);
+    }
 }
 
 // --- UI Logic ---
@@ -160,6 +174,7 @@ function updateMappings(list) {
 
         const card = document.createElement('div');
         card.className = 'mapping-card';
+        card.id = `mapping-card-${i}`;
         if (m.enabled === false) card.style.opacity = '0.4';
 
         // Color-coded left border by mapping type (Precision-Industrial palette)
